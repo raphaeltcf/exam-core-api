@@ -25,3 +25,4 @@ class Command(BaseCommand):
             self.stdout.write(self.style.SUCCESS("Database is available!"))
         else:
             self.stderr.write(self.style.ERROR("Error! It was not possible to establish the connection."))
+            exit(1)
