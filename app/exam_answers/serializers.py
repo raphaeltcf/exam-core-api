@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from rest_framework.exceptions import NotFound
 
 from exam.models import ExamQuestion
 from exam.models import Exam
@@ -208,6 +209,8 @@ class ExamAnswerSubmitSerializer(serializers.Serializer):
     def validate_exam_id(self, value):
         if value is None or int(value) < 1:
             raise serializers.ValidationError('exam_id inválido.')
+        if not Exam.objects.filter(id=value).exists():
+            raise NotFound('Exame não encontrado.')
         return value
 
     @staticmethod
