@@ -28,7 +28,8 @@ INSTALLED_APPS = [
     "student",
     "question",
     "exam",
-    "utils"
+    "utils",
+    "exam_answers",
 ]
 
 MIDDLEWARE = [
@@ -41,7 +42,7 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
-ROOT_URLCONF = "medway_api.urls"
+ROOT_URLCONF = "exam_api.urls"
 
 TEMPLATES = [
     {
@@ -59,19 +60,30 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = "medway_api.wsgi.application"
+WSGI_APPLICATION = "exam_api.wsgi.application"
 
 
-DATABASES = {
-    "default": {
-        'ENGINE': "django.db.backends.postgresql",
-        'NAME': os.environ.get("POSTGRES_DB", "teste"),
-        'USER': os.environ.get("POSTGRES_USER", "teste"),
-        'PASSWORD': os.environ.get("POSTGRES_PASSWORD", "teste"),
-        'HOST': os.environ.get('POSTGRES_HOST', 'db'),
-        'PORT': os.environ.get("POSTGRES_PORT", "5432"),
+# Use SQLite para desenvolvimento local, PostgreSQL para Docker
+USE_POSTGRES = os.environ.get("USE_POSTGRES", "False").lower() == "true"
+
+if USE_POSTGRES:
+    DATABASES = {
+        "default": {
+            'ENGINE': "django.db.backends.postgresql",
+            'NAME': os.environ.get("POSTGRES_DB", "teste"),
+            'USER': os.environ.get("POSTGRES_USER", "teste"),
+            'PASSWORD': os.environ.get("POSTGRES_PASSWORD", "teste"),
+            'HOST': os.environ.get('POSTGRES_HOST', 'localhost'),
+            'PORT': os.environ.get("POSTGRES_PORT", "5432"),
+        }
     }
-}
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "db.sqlite3",
+        }
+    }
 
 AUTH_PASSWORD_VALIDATORS = [
     {
@@ -103,12 +115,27 @@ STATIC_URL = "static/"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [],
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticatedOrReadOnly',
+    ],
     'DEFAULT_FILTER_BACKENDS': (
         'django_filters.rest_framework.DjangoFilterBackend',
+        'rest_framework.filters.SearchFilter',
+        'rest_framework.filters.OrderingFilter',
     ),
-    "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
-    "PAGE_SIZE": 30,
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'PAGE_SIZE': 30,
+    'DEFAULT_RENDERER_CLASSES': [
+        'rest_framework.renderers.JSONRenderer',
+    ],
+    'DEFAULT_PARSER_CLASSES': [
+        'rest_framework.parsers.JSONParser',
+        'rest_framework.parsers.FormParser',
+        'rest_framework.parsers.MultiPartParser',
+    ],
     'DEFAULT_VERSION': 'v1',
+    'EXCEPTION_HANDLER': 'rest_framework.views.exception_handler',
 }
 
 AUTH_USER_MODEL = 'student.Student'
