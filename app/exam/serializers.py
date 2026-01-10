@@ -57,6 +57,20 @@ class ExamCreateUpdateSerializer(serializers.ModelSerializer):
         model = Exam
         fields = ['id', 'name', 'question_ids']
 
+    def validate_question_ids(self, value):
+        if value is None:
+            return value
+        if not isinstance(value, list):
+            raise serializers.ValidationError('question_ids deve ser uma lista de IDs.')
+        if len(value) != len(set(value)):
+            raise serializers.ValidationError('question_ids não pode conter IDs duplicados.')
+        # Validar existência em bulk (evita DoesNotExist/500 no update)
+        existing = set(Question.objects.filter(id__in=value).values_list('id', flat=True))
+        missing = sorted(set(value) - existing)
+        if missing:
+            raise serializers.ValidationError(f'Questões não encontradas: {missing}.')
+        return value
+
     def create(self, validated_data):
         question_ids = validated_data.pop('question_ids', [])
         exam = Exam.objects.create(**validated_data)
