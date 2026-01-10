@@ -21,14 +21,12 @@ class StudentCreateSerializer(serializers.ModelSerializer):
     password = serializers.CharField(
         write_only=True,
         required=True,
-        style={'input_type': 'password'},
         min_length=8,
         help_text="Senha do estudante (mínimo 8 caracteres)."
     )
     password_confirmation = serializers.CharField(
         write_only=True,
         required=True,
-        style={'input_type': 'password'},
         help_text="Confirmação da senha."
     )
 
@@ -71,7 +69,6 @@ class StudentUpdateSerializer(serializers.ModelSerializer):
     password = serializers.CharField(
         write_only=True,
         required=False,
-        style={'input_type': 'password'},
         min_length=8,
         allow_blank=True,
         help_text="Nova senha (deixe em branco para não alterar)."
@@ -79,7 +76,6 @@ class StudentUpdateSerializer(serializers.ModelSerializer):
     password_confirmation = serializers.CharField(
         write_only=True,
         required=False,
-        style={'input_type': 'password'},
         allow_blank=True,
         help_text="Confirmação da nova senha."
     )

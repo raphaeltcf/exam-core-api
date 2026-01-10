@@ -1,8 +1,9 @@
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework.exceptions import ValidationError
+from rest_framework.exceptions import ValidationError as DRFValidationError
 
+from django.core.exceptions import ValidationError as DjangoValidationError
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
 
@@ -56,10 +57,12 @@ class QuestionViewSet(viewsets.ModelViewSet):
             
             response_serializer = QuestionSerializer(question)
             return Response(response_serializer.data, status=status.HTTP_201_CREATED)
-        except ValidationError as e:
-            raise ValidationError(e)
+        except DjangoValidationError as e:
+            raise DRFValidationError(e.message_dict if hasattr(e, 'message_dict') else {'detail': str(e)})
+        except DRFValidationError:
+            raise
         except Exception as e:
-            raise ValidationError({'detail': str(e)})
+            raise DRFValidationError({'detail': str(e)})
 
     def update(self, request, *args, **kwargs):
         instance = self.get_object()
@@ -85,10 +88,12 @@ class QuestionViewSet(viewsets.ModelViewSet):
             
             response_serializer = QuestionSerializer(instance)
             return Response(response_serializer.data)
-        except ValidationError as e:
-            raise ValidationError(e)
+        except DjangoValidationError as e:
+            raise DRFValidationError(e.message_dict if hasattr(e, 'message_dict') else {'detail': str(e)})
+        except DRFValidationError:
+            raise
         except Exception as e:
-            raise ValidationError({'detail': str(e)})
+            raise DRFValidationError({'detail': str(e)})
 
     def partial_update(self, request, *args, **kwargs):
         instance = self.get_object()
@@ -115,10 +120,12 @@ class QuestionViewSet(viewsets.ModelViewSet):
             
             response_serializer = QuestionSerializer(instance)
             return Response(response_serializer.data)
-        except ValidationError as e:
-            raise ValidationError(e)
+        except DjangoValidationError as e:
+            raise DRFValidationError(e.message_dict if hasattr(e, 'message_dict') else {'detail': str(e)})
+        except DRFValidationError:
+            raise
         except Exception as e:
-            raise ValidationError({'detail': str(e)})
+            raise DRFValidationError({'detail': str(e)})
 
     @action(detail=True, methods=['get'], url_path='alternatives')
     def alternatives(self, request, pk=None):
@@ -136,4 +143,4 @@ class QuestionViewSet(viewsets.ModelViewSet):
             serializer = AlternativeSerializer(alternative)
             return Response(serializer.data)
         except Alternative.DoesNotExist:
-            raise ValidationError({'detail': 'Alternativa não encontrada.'})
+            raise DRFValidationError({'detail': 'Alternativa não encontrada.'})
