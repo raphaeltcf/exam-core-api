@@ -1,7 +1,7 @@
 from rest_framework import serializers
 
 from exam.models import Exam, ExamQuestion
-from question.models import Question
+from question.models import Question, Alternative
 from question.serializers import QuestionSerializer, QuestionListSerializer
 
 
@@ -121,3 +121,41 @@ class ReorderQuestionsSerializer(serializers.Serializer):
             raise serializers.ValidationError('Não pode haver IDs duplicados.')
 
         return value
+
+
+class AlternativeTakeSerializer(serializers.ModelSerializer):
+    option_display = serializers.CharField(source='get_option_display', read_only=True)
+
+    class Meta:
+        model = Alternative
+        fields = ['id', 'content', 'option', 'option_display']
+
+
+class QuestionTakeSerializer(serializers.ModelSerializer):
+    alternatives = AlternativeTakeSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Question
+        fields = ['id', 'content', 'alternatives']
+
+
+class ExamQuestionTakeSerializer(serializers.ModelSerializer):
+    question = QuestionTakeSerializer(read_only=True)
+    number = serializers.IntegerField()
+
+    class Meta:
+        model = ExamQuestion
+        fields = ['id', 'question', 'number']
+
+
+class ExamTakeSerializer(serializers.ModelSerializer):
+    questions = ExamQuestionTakeSerializer(
+        many=True, 
+        read_only=True, 
+        source='examquestion_set',
+        help_text="Lista de questões do exame sem mostrar as respostas corretas"
+    )
+
+    class Meta:
+        model = Exam
+        fields = ['id', 'name', 'questions']

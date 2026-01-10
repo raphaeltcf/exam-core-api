@@ -25,3 +25,16 @@ class StudentService:
 
         student.save()
         return student
+    
+    @staticmethod
+    def get_or_create_student_by_email(email: str) -> tuple[Student, bool]:
+        email = email.lower().strip()
+        student, created = Student.objects.get_or_create(email=email,
+            defaults={
+                'username': email.split('@')[0] if '@' in email else email,
+                'name': email.split('@')[0] if '@' in email else email,
+                'is_active': True,
+            }
+        )
+        return student, created
+    

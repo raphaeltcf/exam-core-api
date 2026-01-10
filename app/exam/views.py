@@ -11,12 +11,15 @@ from exam.serializers import (
     ExamSerializer,
     ExamListSerializer,
     ExamCreateUpdateSerializer,
-    ExamQuestionSerializer,
     AddQuestionToExamSerializer,
-    ReorderQuestionsSerializer
+    ReorderQuestionsSerializer,
+    ExamTakeSerializer
 )
+from exam_answers.serializers import ExamAnswerSerializer
 from exam.services import ExamService
+from exam_answers.service import ExamAnswerService
 from exam.filters import ExamFilter
+from student.services import StudentService
 from question.models import Question
 
 
@@ -31,6 +34,10 @@ class ExamViewSet(viewsets.ModelViewSet):
     def get_serializer_class(self):
         if self.action == 'list':
             return ExamListSerializer
+        elif self.action == 'retrieve':
+                                                                  
+                                                                   
+            return ExamTakeSerializer
         elif self.action in ['create', 'update', 'partial_update']:
             return ExamCreateUpdateSerializer
         return ExamSerializer
@@ -45,10 +52,10 @@ class ExamViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         
+        question_ids = serializer.validated_data.pop('question_ids', [])
+        exam = ExamService.create_exam(name=serializer.validated_data['name'])
+        
         try:
-            question_ids = serializer.validated_data.pop('question_ids', [])
-            exam = ExamService.create_exam(name=serializer.validated_data['name'])
-            
             for index, question_id in enumerate(question_ids, start=1):
                 question = Question.objects.get(id=question_id)
                 ExamService.add_question_to_exam(exam, question, index)
@@ -71,10 +78,10 @@ class ExamViewSet(viewsets.ModelViewSet):
         )
         serializer.is_valid(raise_exception=True)
         
+        question = serializer.validated_data['question_id']
+        number = serializer.validated_data['number']
+        
         try:
-            question = serializer.validated_data['question_id']
-            number = serializer.validated_data['number']
-            
             exam_question = ExamService.add_question_to_exam(exam, question, number)
             response_serializer = ExamQuestionSerializer(exam_question)
             return Response(response_serializer.data, status=status.HTTP_201_CREATED)
@@ -121,12 +128,6 @@ class ExamViewSet(viewsets.ModelViewSet):
         except Exception as e:
             raise ValidationError({'detail': str(e)})
 
-    @action(detail=True, methods=['get'], url_path='questions')
-    def questions(self, request, pk=None):
-        exam = self.get_object()
-        exam_questions = ExamQuestion.objects.filter(exam=exam).select_related(
-            'question'
-        ).prefetch_related('question__alternatives').order_by('number')
-        
-        serializer = ExamQuestionSerializer(exam_questions, many=True)
-        return Response(serializer.data)
+                                                                                 
+                                                                                  
+                                     
