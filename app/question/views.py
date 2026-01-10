@@ -19,6 +19,7 @@ from question.filters import QuestionFilter
 
 
 class QuestionViewSet(viewsets.ModelViewSet):
+    lookup_value_regex = r"\d+"
     queryset = Question.objects.all()
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_class = QuestionFilter
@@ -137,6 +138,10 @@ class QuestionViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'], url_path='alternatives/(?P<alternative_id>[^/.]+)/mark-correct')
     def mark_alternative_correct(self, request, pk=None, alternative_id=None):
         question = self.get_object()
+        try:
+            alternative_id = int(alternative_id)
+        except (TypeError, ValueError):
+            raise DRFValidationError({'detail': 'alternative_id inválido.'})
         try:
             alternative = question.alternatives.get(id=alternative_id)
             AlternativeService.mark_as_correct(alternative)

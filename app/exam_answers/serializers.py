@@ -206,8 +206,8 @@ class ExamAnswerSubmitSerializer(serializers.Serializer):
     )
 
     def validate_exam_id(self, value):
-        if not Exam.objects.filter(id=value).exists():
-            raise serializers.ValidationError('Exame não encontrado.')
+        if value is None or int(value) < 1:
+            raise serializers.ValidationError('exam_id inválido.')
         return value
 
     @staticmethod

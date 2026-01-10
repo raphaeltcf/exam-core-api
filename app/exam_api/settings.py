@@ -133,7 +133,7 @@ REST_FRAMEWORK = {
         'rest_framework.parsers.JSONParser',
     ],
     'DEFAULT_VERSION': 'v1',
-    'EXCEPTION_HANDLER': 'rest_framework.views.exception_handler',
+    'EXCEPTION_HANDLER': 'exam_api.exception_handler.custom_exception_handler',
 }
 
 AUTH_USER_MODEL = 'student.Student'

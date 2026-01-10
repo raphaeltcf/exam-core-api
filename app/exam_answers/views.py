@@ -3,7 +3,9 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.exceptions import ValidationError as DRFValidationError, NotFound, MethodNotAllowed
 
+from django.core.validators import EmailValidator
 from django.core.exceptions import ValidationError as DjangoValidationError
+from django.db.models import Count
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
 
@@ -11,7 +13,6 @@ from exam.models import Exam
 from exam_answers.models import ExamAnswer
 from exam_answers.serializers import (
     ExamAnswerSerializer,
-    ExamAnswerCreateSerializer,
     ExamAnswerListSerializer,
     ExamAnswerSubmitSerializer,
     ExamAnswerResultSerializer
@@ -24,6 +25,7 @@ from student.services import StudentService
 
 
 class ExamAnswerViewSet(viewsets.ModelViewSet):
+    lookup_value_regex = r"\d+"
     queryset = ExamAnswer.objects.all()
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_class = ExamAnswerFilter
@@ -45,9 +47,17 @@ class ExamAnswerViewSet(viewsets.ModelViewSet):
             'exam_question__question__alternatives'
         ).all()
         
-        exam_id = self.request.query_params.get('exam_id', None)
-        student_id = self.request.query_params.get('student_id', None)
-        exam_question_id = self.request.query_params.get('exam_question_id', None)
+        def parse_int_param(name, value):
+            if value is None or value == '':
+                return None
+            try:
+                return int(value)
+            except (TypeError, ValueError):
+                raise DRFValidationError({'detail': f'Parâmetro {name} inválido.'})
+
+        exam_id = parse_int_param('exam_id', self.request.query_params.get('exam_id', None))
+        student_id = parse_int_param('student_id', self.request.query_params.get('student_id', None))
+        exam_question_id = parse_int_param('exam_question_id', self.request.query_params.get('exam_question_id', None))
         
         if exam_id:
             queryset = queryset.filter(exam_question__exam_id=exam_id)
@@ -89,6 +99,11 @@ class ExamAnswerViewSet(viewsets.ModelViewSet):
         
         if not exam_id:
             raise DRFValidationError({'detail': 'Parâmetro exam_id é obrigatório.'})
+
+        try:
+            exam_id = int(exam_id)
+        except (TypeError, ValueError):
+            raise DRFValidationError({'detail': 'Parâmetro exam_id inválido.'})
         
         try:
             exam = Exam.objects.get(id=exam_id)
@@ -111,6 +126,11 @@ class ExamAnswerViewSet(viewsets.ModelViewSet):
         
         if not student_id:
             raise DRFValidationError({'detail': 'Parâmetro student_id é obrigatório.'})
+
+        try:
+            student_id = int(student_id)
+        except (TypeError, ValueError):
+            raise DRFValidationError({'detail': 'Parâmetro student_id inválido.'})
         
         try:
             student = Student.objects.get(id=student_id)
@@ -136,17 +156,31 @@ class ExamAnswerViewSet(viewsets.ModelViewSet):
         exam_id = serializer.validated_data['exam_id']
         mapped_answers = serializer.validated_data['mapped_answers']
 
-        exam = Exam.objects.get(id=exam_id)
+        try:
+            exam = Exam.objects.get(id=exam_id)
+        except Exam.DoesNotExist:
+            raise NotFound({'detail': 'Exame não encontrado.'})
+
+        total_questions = exam.examquestion_set.count()
+        if total_questions == 0:
+            return Response(
+                {'detail': 'Este exame não possui questões.'},
+                status=status.HTTP_409_CONFLICT
+            )
+
         student, created = StudentService.get_or_create_student_by_email(email)
 
                                                                   
         if ExamAnswer.objects.filter(student=student, exam_question__exam=exam).exists():
-            raise DRFValidationError({
-                'detail': 'Este estudante já possui respostas registradas para este exame. A prova deve ser enviada completa em uma única tentativa.',
-                'email': email,
-                'exam_id': exam.id,
-                'exam_name': exam.name,
-            })
+            return Response(
+                {
+                    'detail': 'Este estudante já possui respostas registradas para este exame. A prova deve ser enviada completa em uma única tentativa.',
+                    'email': email,
+                    'exam_id': exam.id,
+                    'exam_name': exam.name,
+                },
+                status=status.HTTP_409_CONFLICT
+            )
 
         try:
             exam_answers = ExamAnswerService.submit_exam_answers(
@@ -162,6 +196,24 @@ class ExamAnswerViewSet(viewsets.ModelViewSet):
 
                                                                                      
             question_ids = [ans.exam_question.question_id for ans in exam_answers]
+            counts = Alternative.objects.filter(
+                question_id__in=question_ids,
+                is_correct=True
+            ).values('question_id').annotate(cnt=Count('id'))
+            counts_map = {row['question_id']: row['cnt'] for row in counts}
+            invalid_list = [
+                {'question_id': qid, 'correct_count': counts_map.get(qid, 0)}
+                for qid in question_ids
+                if counts_map.get(qid, 0) != 1
+            ]
+            if invalid_list:
+                return Response(
+                    {
+                        'detail': 'Prova inválida: existe questão sem gabarito correto (ou com mais de um).',
+                        'invalid_questions': invalid_list,
+                    },
+                    status=status.HTTP_409_CONFLICT
+                )
             correct_alts = Alternative.objects.filter(
                 question_id__in=question_ids,
                 is_correct=True
@@ -187,7 +239,10 @@ class ExamAnswerViewSet(viewsets.ModelViewSet):
             }, status=status.HTTP_201_CREATED)
 
         except DjangoValidationError as e:
-            raise DRFValidationError(e.message_dict if hasattr(e, 'message_dict') else {'detail': str(e)})
+            return Response(
+                e.message_dict if hasattr(e, 'message_dict') else {'detail': str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
     @action(detail=False, methods=['get'], url_path='result')
     def result(self, request):
@@ -200,13 +255,31 @@ class ExamAnswerViewSet(viewsets.ModelViewSet):
             raise DRFValidationError({'detail': 'Parâmetro email é obrigatório.'})
 
         try:
-            exam = Exam.objects.get(id=exam_id)
+            exam_id_int = int(exam_id)
+        except (TypeError, ValueError):
+            raise DRFValidationError({'detail': 'exam_id inválido.'})
+
+        email_normalized = str(email).strip().lower()
+        try:
+            EmailValidator()(email_normalized)
+        except DjangoValidationError:
+            raise DRFValidationError({'detail': 'Email inválido.'})
+
+        try:
+            exam = Exam.objects.get(id=exam_id_int)
         except Exam.DoesNotExist:
             raise NotFound({'detail': 'Exame não encontrado.'})
 
-        student, _created = StudentService.get_or_create_student_by_email(email)
+        student = Student.objects.filter(email=email_normalized).first()
+        if not student:
+            raise NotFound({'detail': 'Nenhum resultado encontrado para este email e exame.'})
 
         total_questions = exam.examquestion_set.count()
+        if total_questions == 0:
+            return Response(
+                {'detail': 'Este exame não possui questões.'},
+                status=status.HTTP_409_CONFLICT
+            )
         answers_qs = ExamAnswer.objects.select_related(
             'exam_question__question',
             'selected_alternative'
@@ -216,15 +289,20 @@ class ExamAnswerViewSet(viewsets.ModelViewSet):
         ).order_by('exam_question__number')
 
         answered_questions = answers_qs.count()
-        if answered_questions != total_questions or total_questions == 0:
-            raise DRFValidationError({
-                'detail': 'Resultado indisponível: a prova só existe quando todas as questões foram respondidas em uma única submissão.',
-                'exam_id': exam.id,
-                'exam_name': exam.name,
-                'student_email': student.email,
-                'total_questions': total_questions,
-                'answered_questions': answered_questions,
-            })
+        if answered_questions == 0:
+            raise NotFound({'detail': 'Nenhum resultado encontrado para este email e exame.'})
+        if answered_questions != total_questions:
+            return Response(
+                {
+                    'detail': 'Resultado indisponível: a prova precisa estar completa.',
+                    'exam_id': exam.id,
+                    'exam_name': exam.name,
+                    'student_email': student.email,
+                    'total_questions': total_questions,
+                    'answered_questions': answered_questions,
+                },
+                status=status.HTTP_409_CONFLICT
+            )
 
         correct_answers = answers_qs.filter(is_correct=True).count()
         incorrect_answers = total_questions - correct_answers
@@ -232,6 +310,24 @@ class ExamAnswerViewSet(viewsets.ModelViewSet):
 
                                            
         question_ids = list(exam.examquestion_set.values_list('question_id', flat=True))
+        counts = Alternative.objects.filter(
+            question_id__in=question_ids,
+            is_correct=True
+        ).values('question_id').annotate(cnt=Count('id'))
+        counts_map = {row['question_id']: row['cnt'] for row in counts}
+        invalid_list = [
+            {'question_id': qid, 'correct_count': counts_map.get(qid, 0)}
+            for qid in question_ids
+            if counts_map.get(qid, 0) != 1
+        ]
+        if invalid_list:
+            return Response(
+                {
+                    'detail': 'Prova inválida: existe questão sem gabarito correto (ou com mais de um).',
+                    'invalid_questions': invalid_list,
+                },
+                status=status.HTTP_409_CONFLICT
+            )
         correct_alts = Alternative.objects.filter(question_id__in=question_ids, is_correct=True)
         correct_map = {alt.question_id: alt for alt in correct_alts}
 

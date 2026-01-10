@@ -15,6 +15,7 @@ from student.services import StudentService
 
 
 class StudentViewSet(viewsets.ModelViewSet):
+    lookup_value_regex = r"\d+"
     queryset = Student.objects.all()
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     search_fields = ['email', 'username', 'name']

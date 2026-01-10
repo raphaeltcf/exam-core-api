@@ -11,6 +11,7 @@ from exam.serializers import (
     ExamSerializer,
     ExamListSerializer,
     ExamCreateUpdateSerializer,
+    ExamQuestionSerializer,
     AddQuestionToExamSerializer,
     ReorderQuestionsSerializer,
     ExamTakeSerializer
@@ -24,6 +25,7 @@ from question.models import Question
 
 
 class ExamViewSet(viewsets.ModelViewSet):
+    lookup_value_regex = r"\d+"
     queryset = Exam.objects.all()
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_class = ExamFilter
@@ -69,6 +71,38 @@ class ExamViewSet(viewsets.ModelViewSet):
         except Exception as e:
             raise ValidationError({'detail': str(e)})
 
+    def update(self, request, *args, **kwargs):
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=False)
+        serializer.is_valid(raise_exception=True)
+
+        try:
+            updated = serializer.save()
+            response_serializer = ExamSerializer(updated)
+            return Response(response_serializer.data)
+        except Question.DoesNotExist:
+            raise ValidationError({'detail': 'Questão não encontrada.'})
+        except ValueError as e:
+            raise ValidationError({'detail': str(e)})
+        except Exception as e:
+            raise ValidationError({'detail': str(e)})
+
+    def partial_update(self, request, *args, **kwargs):
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+
+        try:
+            updated = serializer.save()
+            response_serializer = ExamSerializer(updated)
+            return Response(response_serializer.data)
+        except Question.DoesNotExist:
+            raise ValidationError({'detail': 'Questão não encontrada.'})
+        except ValueError as e:
+            raise ValidationError({'detail': str(e)})
+        except Exception as e:
+            raise ValidationError({'detail': str(e)})
+
     @action(detail=True, methods=['post'], url_path='add-question')
     def add_question(self, request, pk=None):
         exam = self.get_object()
@@ -93,6 +127,10 @@ class ExamViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['delete'], url_path='remove-question/(?P<question_id>[^/.]+)')
     def remove_question(self, request, pk=None, question_id=None):
         exam = self.get_object()
+        try:
+            question_id = int(question_id)
+        except (TypeError, ValueError):
+            raise ValidationError({'detail': 'question_id inválido.'})
         
         try:
             question = Question.objects.get(id=question_id)
