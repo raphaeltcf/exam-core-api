@@ -8,7 +8,6 @@ from student.serializers import StudentSerializer
 
 
 class ExamAnswerListSerializer(serializers.ModelSerializer):
-    """Serializer simplificado para listagem de respostas."""
     student_email = serializers.EmailField(source='student.email', read_only=True)
     student_name = serializers.CharField(source='student.name', read_only=True)
     exam_name = serializers.CharField(source='exam_question.exam.name', read_only=True)
@@ -25,7 +24,6 @@ class ExamAnswerListSerializer(serializers.ModelSerializer):
 
 
 class ExamAnswerSerializer(serializers.ModelSerializer):
-    """Serializer completo para ExamAnswer (usado para retrieve, update, partial_update)."""
     student = StudentSerializer(read_only=True)
     exam_question = serializers.SerializerMethodField()
     selected_alternative = serializers.SerializerMethodField()
@@ -49,7 +47,6 @@ class ExamAnswerSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'student', 'exam_question', 'is_correct', 'created_at', 'updated_at']
 
     def get_exam_question(self, obj):
-        """Retorna informações do ExamQuestion."""
         return {
             'id': obj.exam_question.id,
             'exam_id': obj.exam_question.exam.id,
@@ -60,7 +57,6 @@ class ExamAnswerSerializer(serializers.ModelSerializer):
         }
 
     def get_selected_alternative(self, obj):
-        """Retorna informações da alternativa selecionada."""
         return {
             'id': obj.selected_alternative.id,
             'content': obj.selected_alternative.content,
@@ -70,7 +66,6 @@ class ExamAnswerSerializer(serializers.ModelSerializer):
         }
 
     def validate_selected_alternative_id(self, value):
-        """Valida que a alternativa pertence à questão do exame."""
         if self.instance and value:
             exam_question = self.instance.exam_question
             if value.question != exam_question.question:
@@ -81,7 +76,6 @@ class ExamAnswerSerializer(serializers.ModelSerializer):
 
 
 class ExamAnswerCreateSerializer(serializers.ModelSerializer):
-    """Serializer para criar respostas de exame."""
     student_id = serializers.PrimaryKeyRelatedField(
         queryset=Student.objects.all(),
         source='student',
@@ -107,7 +101,6 @@ class ExamAnswerCreateSerializer(serializers.ModelSerializer):
         ]
 
     def validate(self, attrs):
-        """Valida que a alternativa pertence à questão do exame."""
         exam_question = attrs.get('exam_question')
         selected_alternative = attrs.get('selected_alternative')
 
@@ -119,7 +112,6 @@ class ExamAnswerCreateSerializer(serializers.ModelSerializer):
         return attrs
 
     def create(self, validated_data):
-        """Cria uma nova resposta usando o service."""
         from exam_answers.service import ExamAnswerService
         from django.core.exceptions import ValidationError as DjangoValidationError
         

@@ -4,7 +4,6 @@ from exam_answers.models import ExamAnswer
 
 
 class ExamAnswerFilter(django_filters.FilterSet):
-    """Filtros para ExamAnswer."""
     student = django_filters.NumberFilter(
         field_name='student',
         lookup_expr='exact',

@@ -6,7 +6,6 @@ from question.serializers import QuestionSerializer, QuestionListSerializer
 
 
 class ExamQuestionSerializer(serializers.ModelSerializer):
-    """Serializer para o relacionamento ExamQuestion."""
     question = QuestionSerializer(read_only=True)
     question_id = serializers.PrimaryKeyRelatedField(
         queryset=Question.objects.all(),
@@ -21,7 +20,6 @@ class ExamQuestionSerializer(serializers.ModelSerializer):
 
 
 class ExamQuestionNestedSerializer(serializers.ModelSerializer):
-    """Serializer aninhado para ExamQuestion (usado dentro de Exam)."""
     question = QuestionListSerializer(read_only=True)
 
     class Meta:
@@ -31,7 +29,6 @@ class ExamQuestionNestedSerializer(serializers.ModelSerializer):
 
 
 class ExamListSerializer(serializers.ModelSerializer):
-    """Serializer simplificado para listagem de exames."""
     questions_count = serializers.IntegerField(source='examquestion_set.count', read_only=True)
 
     class Meta:
@@ -40,7 +37,6 @@ class ExamListSerializer(serializers.ModelSerializer):
 
 
 class ExamSerializer(serializers.ModelSerializer):
-    """Serializer completo para Exam com questions aninhadas."""
     questions = ExamQuestionNestedSerializer(many=True, read_only=True, source='examquestion_set')
     questions_count = serializers.IntegerField(source='examquestion_set.count', read_only=True)
 
@@ -50,7 +46,6 @@ class ExamSerializer(serializers.ModelSerializer):
 
 
 class ExamCreateUpdateSerializer(serializers.ModelSerializer):
-    """Serializer para criar e atualizar exames."""
     question_ids = serializers.ListField(
         child=serializers.IntegerField(),
         write_only=True,
@@ -63,11 +58,9 @@ class ExamCreateUpdateSerializer(serializers.ModelSerializer):
         fields = ['id', 'name', 'question_ids']
 
     def create(self, validated_data):
-        """Cria um exame."""
         question_ids = validated_data.pop('question_ids', [])
         exam = Exam.objects.create(**validated_data)
         
-        # Adiciona questões se fornecidas
         if question_ids:
             for index, question_id in enumerate(question_ids, start=1):
                 question = Question.objects.get(id=question_id)
@@ -76,17 +69,13 @@ class ExamCreateUpdateSerializer(serializers.ModelSerializer):
         return exam
 
     def update(self, instance, validated_data):
-        """Atualiza um exame."""
         question_ids = validated_data.pop('question_ids', None)
         
         instance.name = validated_data.get('name', instance.name)
         instance.save()
         
-        # Se question_ids for fornecido, reordena as questões
         if question_ids is not None:
-            # Remove todas as questões existentes
             ExamQuestion.objects.filter(exam=instance).delete()
-            # Adiciona questões na nova ordem
             for index, question_id in enumerate(question_ids, start=1):
                 question = Question.objects.get(id=question_id)
                 ExamQuestion.objects.create(exam=instance, question=question, number=index)
@@ -95,7 +84,6 @@ class ExamCreateUpdateSerializer(serializers.ModelSerializer):
 
 
 class AddQuestionToExamSerializer(serializers.Serializer):
-    """Serializer para adicionar uma questão a um exame."""
     question_id = serializers.PrimaryKeyRelatedField(
         queryset=Question.objects.all(),
         required=True
@@ -103,7 +91,6 @@ class AddQuestionToExamSerializer(serializers.Serializer):
     number = serializers.IntegerField(required=True, min_value=1)
 
     def validate_number(self, value):
-        """Valida que o número não está em uso."""
         exam = self.context['exam']
         if ExamQuestion.objects.filter(exam=exam, number=value).exists():
             raise serializers.ValidationError(
@@ -113,7 +100,6 @@ class AddQuestionToExamSerializer(serializers.Serializer):
 
 
 class ReorderQuestionsSerializer(serializers.Serializer):
-    """Serializer para reordenar questões de um exame."""
     exam_question_ids = serializers.ListField(
         child=serializers.IntegerField(),
         required=True,
@@ -121,7 +107,6 @@ class ReorderQuestionsSerializer(serializers.Serializer):
     )
 
     def validate_exam_question_ids(self, value):
-        """Valida que todos os IDs pertencem ao exame e não há duplicatas."""
         exam = self.context['exam']
         exam_questions = ExamQuestion.objects.filter(exam=exam)
         exam_question_ids = set(exam_questions.values_list('id', flat=True))

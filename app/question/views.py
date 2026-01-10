@@ -18,16 +18,6 @@ from question.filters import QuestionFilter
 
 
 class QuestionViewSet(viewsets.ModelViewSet):
-    """
-    ViewSet para gerenciar questões.
-
-    list: Lista todas as questões (versão simplificada)
-    retrieve: Retorna uma questão completa com alternatives
-    create: Cria uma nova questão com alternatives
-    update: Atualiza uma questão e suas alternatives
-    partial_update: Atualiza parcialmente uma questão
-    destroy: Remove uma questão
-    """
     queryset = Question.objects.all()
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_class = QuestionFilter
@@ -36,7 +26,6 @@ class QuestionViewSet(viewsets.ModelViewSet):
     ordering = ['-id']
 
     def get_serializer_class(self):
-        """Retorna o serializer apropriado para cada ação."""
         if self.action == 'list':
             return QuestionListSerializer
         elif self.action in ['create', 'update', 'partial_update']:
@@ -44,12 +33,10 @@ class QuestionViewSet(viewsets.ModelViewSet):
         return QuestionSerializer
 
     def get_queryset(self):
-        """Retorna o queryset otimizado com prefetch_related."""
         queryset = Question.objects.prefetch_related('alternatives').all()
         return queryset
 
     def create(self, request, *args, **kwargs):
-        """Cria uma nova questão usando o service."""
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         
@@ -59,7 +46,6 @@ class QuestionViewSet(viewsets.ModelViewSet):
                 content=serializer.validated_data['content']
             )
             
-            # Cria as alternativas usando o service
             for alt_data in alternatives_data:
                 AlternativeService.create_alternative(
                     question=question,
@@ -76,7 +62,6 @@ class QuestionViewSet(viewsets.ModelViewSet):
             raise ValidationError({'detail': str(e)})
 
     def update(self, request, *args, **kwargs):
-        """Atualiza uma questão e suas alternatives."""
         instance = self.get_object()
         serializer = self.get_serializer(instance, data=request.data, partial=False)
         serializer.is_valid(raise_exception=True)
@@ -87,12 +72,9 @@ class QuestionViewSet(viewsets.ModelViewSet):
             instance.content = serializer.validated_data.get('content', instance.content)
             instance.save()
             
-            # Atualiza alternativas se fornecidas
             if alternatives_data is not None:
-                # Remove alternativas existentes
                 instance.alternatives.all().delete()
                 
-                # Cria novas alternativas usando o service
                 for alt_data in alternatives_data:
                     AlternativeService.create_alternative(
                         question=instance,
@@ -109,7 +91,6 @@ class QuestionViewSet(viewsets.ModelViewSet):
             raise ValidationError({'detail': str(e)})
 
     def partial_update(self, request, *args, **kwargs):
-        """Atualiza parcialmente uma questão."""
         instance = self.get_object()
         serializer = self.get_serializer(instance, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
@@ -121,12 +102,9 @@ class QuestionViewSet(viewsets.ModelViewSet):
                 instance.content = serializer.validated_data['content']
                 instance.save()
             
-            # Atualiza alternativas se fornecidas
             if alternatives_data is not None:
-                # Remove alternativas existentes
                 instance.alternatives.all().delete()
                 
-                # Cria novas alternativas usando o service
                 for alt_data in alternatives_data:
                     AlternativeService.create_alternative(
                         question=instance,
@@ -144,7 +122,6 @@ class QuestionViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['get'], url_path='alternatives')
     def alternatives(self, request, pk=None):
-        """Lista todas as alternativas de uma questão."""
         question = self.get_object()
         alternatives = question.alternatives.all()
         serializer = AlternativeSerializer(alternatives, many=True)
@@ -152,7 +129,6 @@ class QuestionViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'], url_path='alternatives/(?P<alternative_id>[^/.]+)/mark-correct')
     def mark_alternative_correct(self, request, pk=None, alternative_id=None):
-        """Marca uma alternativa como correta."""
         question = self.get_object()
         try:
             alternative = question.alternatives.get(id=alternative_id)
