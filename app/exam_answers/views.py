@@ -20,20 +20,6 @@ from student.models import Student
 
 
 class ExamAnswerViewSet(viewsets.ModelViewSet):
-    """
-    ViewSet para gerenciar respostas de exames.
-
-    list: Lista todas as respostas (versão simplificada)
-    retrieve: Retorna uma resposta completa
-    create: Cria uma nova resposta
-    update: Atualiza uma resposta completamente
-    partial_update: Atualiza parcialmente uma resposta
-    destroy: Remove uma resposta
-
-    Custom actions:
-    - by_exam: Lista respostas filtradas por exame
-    - by_student: Lista respostas filtradas por estudante
-    """
     queryset = ExamAnswer.objects.all()
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_class = ExamAnswerFilter
@@ -41,7 +27,6 @@ class ExamAnswerViewSet(viewsets.ModelViewSet):
     ordering = ['-created_at']
 
     def get_serializer_class(self):
-        """Retorna o serializer apropriado para cada ação."""
         if self.action == 'list':
             return ExamAnswerListSerializer
         elif self.action == 'create':
@@ -49,7 +34,6 @@ class ExamAnswerViewSet(viewsets.ModelViewSet):
         return ExamAnswerSerializer
 
     def get_queryset(self):
-        """Retorna o queryset otimizado com select_related e prefetch_related."""
         queryset = ExamAnswer.objects.select_related(
             'student',
             'exam_question__exam',
@@ -59,7 +43,6 @@ class ExamAnswerViewSet(viewsets.ModelViewSet):
             'exam_question__question__alternatives'
         ).all()
         
-        # Filtros opcionais via query params
         exam_id = self.request.query_params.get('exam_id', None)
         student_id = self.request.query_params.get('student_id', None)
         exam_question_id = self.request.query_params.get('exam_question_id', None)
@@ -74,7 +57,6 @@ class ExamAnswerViewSet(viewsets.ModelViewSet):
         return queryset
 
     def create(self, request, *args, **kwargs):
-        """Cria uma nova resposta usando o service."""
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         
@@ -88,7 +70,6 @@ class ExamAnswerViewSet(viewsets.ModelViewSet):
             raise ValidationError({'detail': str(e)})
 
     def update(self, request, *args, **kwargs):
-        """Atualiza uma resposta usando o service."""
         instance = self.get_object()
         serializer = self.get_serializer(instance, data=request.data, partial=False)
         serializer.is_valid(raise_exception=True)
@@ -97,7 +78,6 @@ class ExamAnswerViewSet(viewsets.ModelViewSet):
             selected_alternative = serializer.validated_data.get('selected_alternative')
             
             if selected_alternative:
-                # Valida que a alternativa pertence à questão
                 ExamAnswerService.validate_answer(instance.exam_question, selected_alternative)
                 exam_answer = ExamAnswerService.update_answer(
                     instance,
@@ -114,7 +94,6 @@ class ExamAnswerViewSet(viewsets.ModelViewSet):
             raise ValidationError({'detail': str(e)})
 
     def partial_update(self, request, *args, **kwargs):
-        """Atualiza parcialmente uma resposta usando o service."""
         instance = self.get_object()
         serializer = self.get_serializer(instance, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
@@ -123,7 +102,6 @@ class ExamAnswerViewSet(viewsets.ModelViewSet):
             selected_alternative = serializer.validated_data.get('selected_alternative')
             
             if selected_alternative:
-                # Valida que a alternativa pertence à questão
                 ExamAnswerService.validate_answer(instance.exam_question, selected_alternative)
                 
                 exam_answer = ExamAnswerService.update_answer(
@@ -142,7 +120,6 @@ class ExamAnswerViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['get'], url_path='by-exam')
     def by_exam(self, request):
-        """Lista respostas filtradas por exame."""
         exam_id = request.query_params.get('exam_id', None)
         
         if not exam_id:
@@ -155,7 +132,6 @@ class ExamAnswerViewSet(viewsets.ModelViewSet):
         
         queryset = self.get_queryset().filter(exam_question__exam=exam)
         
-        # Aplica paginação se necessário
         page = self.paginate_queryset(queryset)
         if page is not None:
             serializer = ExamAnswerListSerializer(page, many=True)
@@ -166,7 +142,6 @@ class ExamAnswerViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['get'], url_path='by-student')
     def by_student(self, request):
-        """Lista respostas filtradas por estudante."""
         student_id = request.query_params.get('student_id', None)
         
         if not student_id:
@@ -179,7 +154,6 @@ class ExamAnswerViewSet(viewsets.ModelViewSet):
         
         queryset = self.get_queryset().filter(student=student)
         
-        # Aplica paginação se necessário
         page = self.paginate_queryset(queryset)
         if page is not None:
             serializer = ExamAnswerListSerializer(page, many=True)

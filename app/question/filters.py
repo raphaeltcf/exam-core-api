@@ -4,7 +4,6 @@ from question.models import Question
 
 
 class QuestionFilter(django_filters.FilterSet):
-    """Filtros para Question."""
     content = django_filters.CharFilter(lookup_expr='icontains', help_text="Filtrar por conteúdo (busca parcial)")
     has_correct_alternative = django_filters.BooleanFilter(
         method='filter_has_correct_alternative',
@@ -26,11 +25,9 @@ class QuestionFilter(django_filters.FilterSet):
         fields = ['content', 'has_correct_alternative']
 
     def filter_has_correct_alternative(self, queryset, name, value):
-        """Filtra questões que têm ou não alternativa correta."""
         if value is True:
             return queryset.filter(alternatives__is_correct=True).distinct()
         elif value is False:
-            # Questões que não têm alternativa correta
             questions_with_correct = queryset.filter(alternatives__is_correct=True).values_list('id', flat=True)
             return queryset.exclude(id__in=questions_with_correct)
         return queryset

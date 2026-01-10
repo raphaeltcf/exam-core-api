@@ -5,7 +5,6 @@ from exam.models import Exam
 
 
 class ExamFilter(django_filters.FilterSet):
-    """Filtros para Exam."""
     name = django_filters.CharFilter(lookup_expr='icontains', help_text="Filtrar por nome (busca parcial)")
     questions_count_min = django_filters.NumberFilter(
         method='filter_questions_count_min',
@@ -26,13 +25,11 @@ class ExamFilter(django_filters.FilterSet):
         fields = ['name', 'has_question']
 
     def filter_questions_count_min(self, queryset, name, value):
-        """Filtra exames com número mínimo de questões."""
         return queryset.annotate(
             questions_count=models.Count('examquestion')
         ).filter(questions_count__gte=value)
 
     def filter_questions_count_max(self, queryset, name, value):
-        """Filtra exames com número máximo de questões."""
         return queryset.annotate(
             questions_count=models.Count('examquestion')
         ).filter(questions_count__lte=value)
