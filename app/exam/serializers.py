@@ -17,6 +17,12 @@ class ExamQuestionSerializer(serializers.ModelSerializer):
         model = ExamQuestion
         fields = ['id', 'exam', 'question', 'question_id', 'number']
         read_only_fields = ['exam']
+        extra_kwargs = {
+            'number': {
+                'help_text': 'Número (ordem) da questão dentro da prova.',
+                'style': {'example': 1},
+            },
+        }
 
 
 class ExamQuestionNestedSerializer(serializers.ModelSerializer):
@@ -26,6 +32,12 @@ class ExamQuestionNestedSerializer(serializers.ModelSerializer):
         model = ExamQuestion
         fields = ['id', 'question', 'number']
         read_only_fields = ['exam']
+        extra_kwargs = {
+            'number': {
+                'help_text': 'Número (ordem) da questão dentro da prova.',
+                'style': {'example': 1},
+            },
+        }
 
 
 class ExamListSerializer(serializers.ModelSerializer):
@@ -34,6 +46,12 @@ class ExamListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Exam
         fields = ['id', 'name', 'questions_count']
+        extra_kwargs = {
+            'name': {
+                'help_text': 'Nome da prova.',
+                'style': {'example': 'Prova de Geografia'},
+            },
+        }
 
 
 class ExamSerializer(serializers.ModelSerializer):
@@ -43,6 +61,12 @@ class ExamSerializer(serializers.ModelSerializer):
     class Meta:
         model = Exam
         fields = ['id', 'name', 'questions', 'questions_count']
+        extra_kwargs = {
+            'name': {
+                'help_text': 'Nome da prova.',
+                'style': {'example': 'Prova de Matemática'},
+            },
+        }
 
 
 class ExamCreateUpdateSerializer(serializers.ModelSerializer):
@@ -56,6 +80,12 @@ class ExamCreateUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Exam
         fields = ['id', 'name', 'question_ids']
+        extra_kwargs = {
+            'name': {
+                'help_text': 'Nome da prova.',
+                'style': {'example': 'Prova de História'},
+            },
+        }
 
     def validate_question_ids(self, value):
         if value is None:
@@ -64,7 +94,6 @@ class ExamCreateUpdateSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError('question_ids deve ser uma lista de IDs.')
         if len(value) != len(set(value)):
             raise serializers.ValidationError('question_ids não pode conter IDs duplicados.')
-        # Validar existência em bulk (evita DoesNotExist/500 no update)
         existing = set(Question.objects.filter(id__in=value).values_list('id', flat=True))
         missing = sorted(set(value) - existing)
         if missing:
@@ -103,6 +132,13 @@ class AddQuestionToExamSerializer(serializers.Serializer):
         required=True
     )
     number = serializers.IntegerField(required=True, min_value=1)
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['question_id'].help_text = 'ID da questão a ser adicionada ao exame.'
+        self.fields['question_id'].style = {'example': 5}
+        self.fields['number'].help_text = 'Posição (número) em que a questão será inserida.'
+        self.fields['number'].style = {'example': 3}
 
     def validate_number(self, value):
         exam = self.context['exam']
@@ -119,6 +155,10 @@ class ReorderQuestionsSerializer(serializers.Serializer):
         required=True,
         help_text="Lista de IDs de ExamQuestion na nova ordem desejada."
     )
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['exam_question_ids'].style = {'example': [5, 3, 1, 4, 2]}
 
     def validate_exam_question_ids(self, value):
         exam = self.context['exam']
@@ -173,3 +213,9 @@ class ExamTakeSerializer(serializers.ModelSerializer):
     class Meta:
         model = Exam
         fields = ['id', 'name', 'questions']
+        extra_kwargs = {
+            'name': {
+                'help_text': 'Nome da prova.',
+                'style': {'example': 'Prova de Ciências'},
+            },
+        }

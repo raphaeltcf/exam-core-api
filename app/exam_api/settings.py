@@ -25,6 +25,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "rest_framework",
     "django_filters",
+    "drf_spectacular",
     "student",
     "question",
     "exam",
@@ -134,6 +135,45 @@ REST_FRAMEWORK = {
     ],
     'DEFAULT_VERSION': 'v1',
     'EXCEPTION_HANDLER': 'exam_api.exception_handler.custom_exception_handler',
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+}
+
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'Exam Core API',
+    'DESCRIPTION': """
+    API completa para gerenciamento de provas online com questões de múltipla escolha.
+    
+    ## Funcionalidades
+    
+    - **Estudantes**: Gerenciamento de estudantes com autenticação
+    - **Questões**: CRUD completo de questões e alternativas
+    - **Provas**: Criação e gerenciamento de provas com questões
+    - **Respostas**: Submissão de provas e consulta de resultados
+    
+    ## Fluxo de Uso
+    
+    1. Criar questões com alternativas (POST /api/v1/questions/)
+    2. Criar uma prova adicionando questões (POST /api/v1/exams/)
+    3. Buscar prova para realizar (GET /api/v1/exams/{id}/)
+    4. Submeter respostas completas (POST /api/v1/exam-answers/submit/)
+    5. Consultar resultado (GET /api/v1/exam-answers/result/)
+    """,
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
+    'SWAGGER_UI_SETTINGS': {
+        'deepLinking': True,
+        'persistAuthorization': True,
+        'displayOperationId': True,
+        'filter': True,
+        'tryItOutEnabled': True,
+        'syntaxHighlight.theme': 'monokai',
+    },
+    'COMPONENT_SPLIT_REQUEST': True,
+    'SCHEMA_PATH_PREFIX': r'/api/v[0-9]',
+    'SERVERS': [
+        {'url': 'http://localhost:8000', 'description': 'Servidor de Desenvolvimento'},
+        {'url': 'http://0.0.0.0:8000', 'description': 'Servidor Docker'},
+    ],
 }
 
 AUTH_USER_MODEL = 'student.Student'

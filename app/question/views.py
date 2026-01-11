@@ -6,6 +6,8 @@ from rest_framework.exceptions import ValidationError as DRFValidationError
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
+from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiExample, OpenApiParameter
+from drf_spectacular.types import OpenApiTypes
 
 from question.models import Question, Alternative
 from question.serializers import (
@@ -18,6 +20,242 @@ from question.services import QuestionService, AlternativeService
 from question.filters import QuestionFilter
 
 
+@extend_schema_view(
+    list=extend_schema(
+        summary='Listar questões',
+        description='Lista todas as questões com paginação, busca e filtros.',
+        parameters=[
+            OpenApiParameter(
+                name='search',
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+                description='Busca por conteúdo da questão'
+            ),
+            OpenApiParameter(
+                name='ordering',
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+                description='Ordenação: id, content (use - para decrescente)'
+            ),
+        ],
+        tags=['Questões'],
+        examples=[
+            OpenApiExample(
+                'Resposta de Listagem',
+                value={
+                    "count": 2,
+                    "next": None,
+                    "previous": None,
+                    "results": [
+                        {
+                            "id": 1,
+                            "content": "Qual é a capital do Brasil?",
+                            "alternatives_count": 4,
+                            "has_correct_alternative": True
+                        },
+                        {
+                            "id": 2,
+                            "content": "Quanto é 2 + 2?",
+                            "alternatives_count": 4,
+                            "has_correct_alternative": True
+                        }
+                    ]
+                },
+                response_only=True,
+            ),
+        ]
+    ),
+    retrieve=extend_schema(
+        summary='Detalhes da questão',
+        description='Retorna os detalhes completos de uma questão com suas alternativas.',
+        tags=['Questões'],
+        examples=[
+            OpenApiExample(
+                'Questão Detalhada',
+                value={
+                    "id": 1,
+                    "content": "Qual é a capital do Brasil?",
+                    "alternatives": [
+                        {
+                            "id": 1,
+                            "content": "São Paulo",
+                            "option": 1,
+                            "option_display": "A",
+                            "is_correct": False
+                        },
+                        {
+                            "id": 2,
+                            "content": "Brasília",
+                            "option": 2,
+                            "option_display": "B",
+                            "is_correct": True
+                        },
+                        {
+                            "id": 3,
+                            "content": "Rio de Janeiro",
+                            "option": 3,
+                            "option_display": "C",
+                            "is_correct": False
+                        },
+                        {
+                            "id": 4,
+                            "content": "Salvador",
+                            "option": 4,
+                            "option_display": "D",
+                            "is_correct": False
+                        }
+                    ],
+                    "has_correct_alternative": True
+                },
+                response_only=True,
+            ),
+        ]
+    ),
+    create=extend_schema(
+        summary='Criar questão',
+        description='Cria uma nova questão com alternativas. A questão deve ter entre 1 e 5 alternativas, e exatamente uma alternativa correta.',
+        tags=['Questões'],
+        examples=[
+            OpenApiExample(
+                'Questão de Múltipla Escolha',
+                value={
+                    "content": "Qual é a capital do Brasil?",
+                    "alternatives": [
+                        {
+                            "content": "São Paulo",
+                            "option": 1,
+                            "is_correct": False
+                        },
+                        {
+                            "content": "Brasília",
+                            "option": 2,
+                            "is_correct": True
+                        },
+                        {
+                            "content": "Rio de Janeiro",
+                            "option": 3,
+                            "is_correct": False
+                        },
+                        {
+                            "content": "Salvador",
+                            "option": 4,
+                            "is_correct": False
+                        }
+                    ]
+                },
+                request_only=True,
+            ),
+            OpenApiExample(
+                'Questão de Matemática',
+                value={
+                    "content": "Quanto é 2 + 2?",
+                    "alternatives": [
+                        {
+                            "content": "3",
+                            "option": 1,
+                            "is_correct": False
+                        },
+                        {
+                            "content": "4",
+                            "option": 2,
+                            "is_correct": True
+                        },
+                        {
+                            "content": "5",
+                            "option": 3,
+                            "is_correct": False
+                        }
+                    ]
+                },
+                request_only=True,
+            ),
+            OpenApiExample(
+                'Questão Criada',
+                value={
+                    "id": 1,
+                    "content": "Qual é a capital do Brasil?",
+                    "alternatives": [
+                        {
+                            "id": 1,
+                            "content": "São Paulo",
+                            "option": 1,
+                            "option_display": "A",
+                            "is_correct": False
+                        },
+                        {
+                            "id": 2,
+                            "content": "Brasília",
+                            "option": 2,
+                            "option_display": "B",
+                            "is_correct": True
+                        },
+                        {
+                            "id": 3,
+                            "content": "Rio de Janeiro",
+                            "option": 3,
+                            "option_display": "C",
+                            "is_correct": False
+                        },
+                        {
+                            "id": 4,
+                            "content": "Salvador",
+                            "option": 4,
+                            "option_display": "D",
+                            "is_correct": False
+                        }
+                    ],
+                    "has_correct_alternative": True
+                },
+                response_only=True,
+            ),
+        ]
+    ),
+    update=extend_schema(
+        summary='Atualizar questão',
+        description='Atualiza completamente uma questão existente.',
+        tags=['Questões'],
+        examples=[
+            OpenApiExample(
+                'Atualização Completa',
+                value={
+                    "content": "Qual é a capital do Brasil? (Atualizada)",
+                    "alternatives": [
+                        {
+                            "content": "São Paulo",
+                            "option": 1,
+                            "is_correct": False
+                        },
+                        {
+                            "content": "Brasília",
+                            "option": 2,
+                            "is_correct": True
+                        }
+                    ]
+                },
+                request_only=True,
+            ),
+        ]
+    ),
+    partial_update=extend_schema(
+        summary='Atualizar parcialmente questão',
+        description='Atualiza parcialmente uma questão existente.',
+        tags=['Questões'],
+        examples=[
+            OpenApiExample(
+                'Atualizar Apenas Conteúdo',
+                value={
+                    "content": "Nova pergunta atualizada"
+                },
+                request_only=True,
+            ),
+        ]
+    ),
+    destroy=extend_schema(
+        summary='Deletar questão',
+        description='Remove uma questão do sistema.',
+        tags=['Questões'],
+    ),
+)
 class QuestionViewSet(viewsets.ModelViewSet):
     lookup_value_regex = r"\d+"
     queryset = Question.objects.all()
@@ -128,6 +366,40 @@ class QuestionViewSet(viewsets.ModelViewSet):
         except Exception as e:
             raise DRFValidationError({'detail': str(e)})
 
+    @extend_schema(
+        summary='Listar alternativas da questão',
+        description='Retorna todas as alternativas de uma questão específica.',
+        tags=['Questões'],
+        examples=[
+            OpenApiExample(
+                'Lista de Alternativas',
+                value=[
+                    {
+                        "id": 1,
+                        "content": "São Paulo",
+                        "option": 1,
+                        "option_display": "A",
+                        "is_correct": False
+                    },
+                    {
+                        "id": 2,
+                        "content": "Brasília",
+                        "option": 2,
+                        "option_display": "B",
+                        "is_correct": True
+                    },
+                    {
+                        "id": 3,
+                        "content": "Rio de Janeiro",
+                        "option": 3,
+                        "option_display": "C",
+                        "is_correct": False
+                    }
+                ],
+                response_only=True,
+            ),
+        ]
+    )
     @action(detail=True, methods=['get'], url_path='alternatives')
     def alternatives(self, request, pk=None):
         question = self.get_object()
@@ -135,6 +407,32 @@ class QuestionViewSet(viewsets.ModelViewSet):
         serializer = AlternativeSerializer(alternatives, many=True)
         return Response(serializer.data)
 
+    @extend_schema(
+        summary='Marcar alternativa como correta',
+        description='Marca uma alternativa específica como correta. Automaticamente desmarca as outras alternativas da mesma questão.',
+        tags=['Questões'],
+        parameters=[
+            OpenApiParameter(
+                name='alternative_id',
+                type=OpenApiTypes.INT,
+                location=OpenApiParameter.PATH,
+                description='ID da alternativa a ser marcada como correta'
+            ),
+        ],
+        examples=[
+            OpenApiExample(
+                'Alternativa Marcada',
+                value={
+                    "id": 2,
+                    "content": "Brasília",
+                    "option": 2,
+                    "option_display": "B",
+                    "is_correct": True
+                },
+                response_only=True,
+            ),
+        ]
+    )
     @action(detail=True, methods=['post'], url_path='alternatives/(?P<alternative_id>[^/.]+)/mark-correct')
     def mark_alternative_correct(self, request, pk=None, alternative_id=None):
         question = self.get_object()

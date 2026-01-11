@@ -15,6 +15,25 @@ class StudentSerializer(serializers.ModelSerializer):
             'id', 'date_joined', 'last_login',
             'is_staff', 'is_superuser'
         ]
+        extra_kwargs = {
+            'email': {
+                'help_text': 'Email único do estudante (usado como login).',
+                'style': {'example': 'joao.silva@email.com'},
+            },
+            'username': {
+                'help_text': 'Username opcional. Se não enviado, pode ser derivado do email.',
+                'style': {'example': 'joao.silva'},
+                'required': False,
+            },
+            'name': {
+                'help_text': 'Nome completo do estudante.',
+                'style': {'example': 'João Silva'},
+            },
+            'is_active': {
+                'help_text': 'Indica se o estudante está ativo.',
+                'style': {'example': True},
+            },
+        }
 
 
 class StudentCreateSerializer(serializers.ModelSerializer):
@@ -37,9 +56,26 @@ class StudentCreateSerializer(serializers.ModelSerializer):
             'password', 'password_confirmation', 'is_active'
         ]
         extra_kwargs = {
-            'email': {'required': True},
-            'name': {'required': True},
-            'username': {'required': False}
+            'email': {
+                'required': True,
+                'help_text': 'Email único do estudante (será usado como login).',
+                'style': {'example': 'maria.santos@email.com'},
+            },
+            'name': {
+                'required': True,
+                'help_text': 'Nome completo do estudante.',
+                'style': {'example': 'Maria Santos'},
+            },
+            'username': {
+                'required': False,
+                'help_text': 'Username opcional. Se não enviado, pode ser derivado do email.',
+                'style': {'example': 'maria.santos'},
+            },
+            'is_active': {
+                'required': False,
+                'help_text': 'Indica se o estudante estará ativo.',
+                'style': {'example': True},
+            },
         }
 
     def validate(self, attrs):
@@ -87,9 +123,26 @@ class StudentUpdateSerializer(serializers.ModelSerializer):
             'password', 'password_confirmation', 'is_active'
         ]
         extra_kwargs = {
-            'email': {'required': False},
-            'name': {'required': False},
-            'username': {'required': False}
+            'email': {
+                'required': False,
+                'help_text': 'Novo email do estudante (deve ser único).',
+                'style': {'example': 'joao.silva.novo@email.com'},
+            },
+            'name': {
+                'required': False,
+                'help_text': 'Novo nome do estudante.',
+                'style': {'example': 'João Silva Atualizado'},
+            },
+            'username': {
+                'required': False,
+                'help_text': 'Novo username do estudante.',
+                'style': {'example': 'joao.silva.updated'},
+            },
+            'is_active': {
+                'required': False,
+                'help_text': 'Ativar/desativar o estudante.',
+                'style': {'example': True},
+            },
         }
 
     def validate(self, attrs):
