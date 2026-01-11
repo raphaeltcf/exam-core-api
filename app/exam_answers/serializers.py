@@ -24,6 +24,12 @@ class ExamAnswerListSerializer(serializers.ModelSerializer):
             'question_number', 'question_content', 'is_correct',
             'created_at', 'updated_at'
         ]
+        extra_kwargs = {
+            'is_correct': {
+                'help_text': 'Indica se a alternativa selecionada é correta.',
+                'style': {'example': True},
+            },
+        }
 
 
 class ExamAnswerSerializer(serializers.ModelSerializer):
@@ -48,6 +54,12 @@ class ExamAnswerSerializer(serializers.ModelSerializer):
             'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'student', 'exam_question', 'is_correct', 'created_at', 'updated_at']
+        extra_kwargs = {
+            'selected_alternative_id': {
+                'help_text': 'ID da alternativa selecionada (deve pertencer à questão do exame).',
+                'style': {'example': 2},
+            },
+        }
 
     def get_exam_question(self, obj):
         return {
@@ -118,6 +130,47 @@ class ExamAnswerResultSerializer(serializers.ModelSerializer):
         }
 
 
+class StudentExamSummarySerializer(serializers.Serializer):
+    """
+    Resumo de um exame realizado por um estudante, com estatísticas e detalhes das respostas.
+    """
+    exam_id = serializers.IntegerField(
+        help_text='ID do exame.',
+        style={'example': 1},
+    )
+    exam_name = serializers.CharField(
+        help_text='Nome do exame.',
+        style={'example': 'Prova de Geografia'},
+    )
+    total_questions = serializers.IntegerField(
+        help_text='Total de questões no exame.',
+        style={'example': 3},
+    )
+    correct_answers = serializers.IntegerField(
+        help_text='Número de respostas corretas.',
+        style={'example': 2},
+    )
+    incorrect_answers = serializers.IntegerField(
+        help_text='Número de respostas incorretas.',
+        style={'example': 1},
+    )
+    score_percentage = serializers.FloatField(
+        help_text='Porcentagem de acertos.',
+        style={'example': 66.67},
+    )
+    completed_at = serializers.DateTimeField(
+        help_text='Data/hora de conclusão do exame.',
+        style={'example': '2024-01-20T10:30:00Z'},
+        allow_null=True,
+        required=False,
+    )
+    answers = ExamAnswerResultSerializer(
+        many=True,
+        help_text='Detalhes das respostas do exame (inclui alternativa correta).',
+        required=True,
+    )
+
+
 class ExamAnswerCreateSerializer(serializers.ModelSerializer):
     student_id = serializers.PrimaryKeyRelatedField(
         queryset=Student.objects.all(),
@@ -147,6 +200,22 @@ class ExamAnswerCreateSerializer(serializers.ModelSerializer):
         fields = [
             'student_id', 'email', 'exam_question_id', 'selected_alternative_id'
         ]
+        extra_kwargs = {
+            'student_id': {
+                'style': {'example': 1},
+            },
+            'email': {
+                'style': {'example': 'aluno@email.com'},
+            },
+            'exam_question_id': {
+                'help_text': 'ID do ExamQuestion (questão já associada a uma prova).',
+                'style': {'example': 10},
+            },
+            'selected_alternative_id': {
+                'help_text': 'ID da alternativa selecionada (deve pertencer à questão).',
+                'style': {'example': 42},
+            },
+        }
 
     def validate(self, attrs):
         student = attrs.get('student')
@@ -205,6 +274,18 @@ class ExamAnswerSubmitSerializer(serializers.Serializer):
         child=serializers.JSONField(),
         required=True
     )
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['email'].help_text = 'Email do estudante (se não existir, será criado automaticamente).'
+        self.fields['email'].style = {'example': 'aluno@x.com'}
+        self.fields['exam_id'].help_text = 'ID da prova (Exam).'
+        self.fields['exam_id'].style = {'example': 1}
+        self.fields['answers'].help_text = (
+            'Objeto onde a chave é o número da questão na prova (ExamQuestion.number) e o valor é a opção escolhida '
+            '(\"A\"..\"E\" ou 1..5). Ex.: {\"1\": \"B\", \"2\": \"A\"}.'
+        )
+        self.fields['answers'].style = {'example': {'1': 'B', '2': 'A'}}
 
     def validate_exam_id(self, value):
         if value is None or int(value) < 1:

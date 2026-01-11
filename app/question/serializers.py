@@ -9,6 +9,20 @@ class AlternativeSerializer(serializers.ModelSerializer):
     class Meta:
         model = Alternative
         fields = ['id', 'content', 'option', 'option_display', 'is_correct']
+        extra_kwargs = {
+            'content': {
+                'help_text': 'Texto da alternativa.',
+                'style': {'example': 'Brasília'},
+            },
+            'option': {
+                'help_text': 'Opção da alternativa: 1=A, 2=B, 3=C, 4=D, 5=E.',
+                'style': {'example': 2},
+            },
+            'is_correct': {
+                'help_text': 'Indica se esta alternativa é a correta (gabarito).',
+                'style': {'example': True},
+            },
+        }
 
 
 class AlternativeNestedSerializer(serializers.ModelSerializer):
@@ -17,6 +31,20 @@ class AlternativeNestedSerializer(serializers.ModelSerializer):
     class Meta:
         model = Alternative
         fields = ['id', 'content', 'option', 'option_display', 'is_correct']
+        extra_kwargs = {
+            'content': {
+                'help_text': 'Texto da alternativa.',
+                'style': {'example': 'São Paulo'},
+            },
+            'option': {
+                'help_text': 'Opção da alternativa: 1=A, 2=B, 3=C, 4=D, 5=E.',
+                'style': {'example': 1},
+            },
+            'is_correct': {
+                'help_text': 'Indica se esta alternativa é a correta (gabarito).',
+                'style': {'example': False},
+            },
+        }
 
 
 class QuestionListSerializer(serializers.ModelSerializer):
@@ -26,6 +54,12 @@ class QuestionListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Question
         fields = ['id', 'content', 'alternatives_count', 'has_correct_alternative']
+        extra_kwargs = {
+            'content': {
+                'help_text': 'Conteúdo (enunciado) da questão.',
+                'style': {'example': 'Qual é a capital do Brasil?'},
+            },
+        }
 
     def get_has_correct_alternative(self, obj):
         return obj.alternatives.filter(is_correct=True).exists()
@@ -38,6 +72,12 @@ class QuestionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Question
         fields = ['id', 'content', 'alternatives', 'has_correct_alternative']
+        extra_kwargs = {
+            'content': {
+                'help_text': 'Conteúdo (enunciado) da questão.',
+                'style': {'example': 'Quanto é 2 + 2?'},
+            },
+        }
 
     def get_has_correct_alternative(self, obj):
         return obj.alternatives.filter(is_correct=True).exists()
@@ -49,6 +89,12 @@ class QuestionCreateUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Question
         fields = ['id', 'content', 'alternatives']
+        extra_kwargs = {
+            'content': {
+                'help_text': 'Conteúdo (enunciado) da questão.',
+                'style': {'example': 'Qual é o maior oceano do mundo?'},
+            },
+        }
 
     def create(self, validated_data):
         alternatives_data = validated_data.pop('alternatives', [])
