@@ -58,7 +58,7 @@ Também é recomendado um editor como [VSCode](https://code.visualstudio.com/).
 
 ```bash
 # Clone o repositório
-git clone <URL_DO_REPOSITORIO>
+git clone <https://github.com/raphaeltcf/exam-core-api>
 cd exam-core-api
 ```
 
